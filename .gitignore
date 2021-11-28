@@ -1,0 +1,14 @@
+*
+!**/
+!*.*
+
+nimcache/
+build/
+docs/build/
+.cache
+.DS_Store
+.vscode
+
+# Package specific
+*.duckdb
+*.duckdb.wal
