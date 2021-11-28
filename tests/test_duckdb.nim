@@ -1,6 +1,6 @@
 import sequtils
 import unittest
-import duckdb
+import ../src/duckdb
 
 
 suite "tests":
