@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [0.3.0] - 2021-09-11
+## [0.3.0] - 2022-09-11
 ### Added
 - Changed library API to match sqlite in stdlib
 - Library now more memory safe due to use of destructors
