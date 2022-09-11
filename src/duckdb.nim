@@ -1,5 +1,4 @@
-import sequtils
-import duckdb_wrapper
+import duckdb/duckdb_wrapper
 
 
 type
@@ -176,7 +175,7 @@ proc fastInsert*(duckDBConnection: DuckDBConnection, table: string, ent: seq[Duc
     for row in ent:
       for column in row:
         if column == "": duckDBState = duckdbAppendNull(duckdbAppender)
-        else: duckDBState = duckdbAppendVarchar(duckdbAppender, column)
+        else: duckDBState = duckdbAppendVarchar(duckdbAppender, column.cstring)
         checkStateSuccessful(duckDBState)
       duckDBState = duckdbAppenderEndRow(duckDBAppender)
       checkStateSuccessful(duckDBState)

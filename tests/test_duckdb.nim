@@ -1,4 +1,3 @@
-import sequtils
 import unittest
 import ../src/duckdb
 
