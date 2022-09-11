@@ -21,7 +21,6 @@ type
 proc isStateSuccessful(duckDBState: DuckDBState): bool =
   result = duckDBState == DuckDBSuccess
 
-
 proc checkStateSuccessful(duckDBState: DuckDBState) =
   if not isStateSuccessful(duckDBState): raise newException(DuckDBConnectionError, "Error initializing DuckDB connection.")
 
@@ -98,8 +97,8 @@ template cFree(valueVarchar: cstring, body: untyped) =
 
 
 iterator getRows(duckDBResult: var DuckDBResult): DuckDBRow =
-  var rowCount = duckDBResult.rowCount
-  var columnCount = duckDBResult.columnCount
+  var rowCount = duckDBResult.addr.duckdbRowCount()
+  var columnCount = duckDBResult.addr.duckdbColumnCount()
   var duckDBRow = newSeq[string](columnCount)
   for idxRow in 0..<rowCount:
     for idxCol in 0..<columnCount:
