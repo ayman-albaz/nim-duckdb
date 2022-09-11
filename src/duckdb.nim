@@ -2,170 +2,176 @@ import duckdb/duckdb_wrapper
 
 type
   DuckDBBaseError* = object of CatchableError
-  DuckDBConnectionError* = object of DuckDBBaseError
   DuckDBOperationError* = object of DuckDBBaseError
-  DuckDBDatabase* = duckdb_database
-  DuckDBConnection* = duckdb_connection
-  DuckDBPreparedStatement = duckdb_prepared_statement
-  DuckDBResult = duckdb_result
-  DuckDBAppender = duckdb_appender
-  DuckDBState* = duckdb_state
   DuckDBRow* = seq[string]
+  DuckDBState* = duckdb_state
+  # User defined objects
+  DuckDBConn* = object
+    database: duckdbDatabase
+    connection: duckdbConnection
+  DuckDBResult* = object
+    result: duckdbResult
+  DuckDBPreparedStatement = object
+    statement: duckdbPreparedStatement
+  DuckDBValueVarchar = object
+    varchar: cstring
+  DuckDBAppender = object
+    appender: duckdbAppender
 
-template cFree(duckDBResult: DuckDBResult, body: untyped) =
-  try: body
-  finally: duckdbDestroyResult(duckDBResult.addr)
-
-template cFree(valueVarchar: cstring, body: untyped) =
-  try: body
-  finally: duckdbFree(valueVarchar)
-
-template cFree(duckDBPreparedStatement: DuckDBPreparedStatement, body: untyped) =
-  try: body
-  finally: duckdbDestroyPrepare(duckDBPreparedStatement.addr)
-
-proc isStateSuccessful(duckDBState: DuckDBState): bool =
-  result = duckDBState == DuckDBSuccess
-
-proc checkStateSuccessful(duckDBState: DuckDBState) =
-  if not isStateSuccessful(duckDBState): raise newException(DuckDBConnectionError, "DuckDB operation did not complete sucessfully.")
-
-proc checkStateSuccessful(duckDBState: DuckDBState, duckDBResult: DuckDBResult) =
-  let errorMessage = duckDBResult.unsafeAddr.duckdbResultError()
-  if not isStateSuccessful(duckDBState): raise newException(DuckDBOperationError, "DuckDB operation did not complete sucessfully. Reason:\n" & $errorMessage)
-
-proc checkStateSuccessful(duckDBState: DuckDBState, duckDBResult: DuckDBPreparedStatement) =
-  let errorMessage = duckDBResult.unsafeAddr.duckDBPrepareError()
-  if not isStateSuccessful(duckDBState): raise newException(DuckDBOperationError, "DuckDB operation did not complete sucessfully. Reason:\n" & $errorMessage)
-
-proc close*(duckDBDatabase: DuckDBDatabase) =
+proc close*(conn: DuckDBConn) =
   ## Closes a duckDB database.
-  duckdbClose(duckDBDatabase.unsafeAddr)
+  duckdbClose(conn.database.unsafeAddr)
 
-proc disconnect*(duckDBConnection: DuckDBConnection) =
+proc disconnect*(conn: DuckDBConn) =
   ## Disconnects the connection to a duckDB database.
-  duckdbDisconnect(duckDBConnection.unsafeAddr)
+  duckdbDisconnect(conn.connection.unsafeAddr)
 
-proc openDuckDB*(path: string): DuckDBDatabase =
+proc `=destroy`(conn: var DuckDBConn) =
+  if not isNil(conn.connection):
+    conn.disconnect()
+  if not isNil(conn.database):
+    conn.close()
+
+proc `=destroy`(result: var DuckDBResult) =
+  if not isNil(result.result.addr):
+    duckdbDestroyResult(result.result.addr)
+
+proc `=destroy`(statement: var DuckDBPreparedStatement) =
+  if not isNil(statement.statement):
+    duckdbDestroyPrepare(statement.statement.addr)
+
+proc `=destroy`(varchar: var DuckDBValueVarchar) =
+  if not isNil(varchar.varchar):
+    duckdbFree(varchar.varchar)
+
+proc `=destroy`(appender: var DuckDBAppender) =
+  if not isNil(appender.appender):
+    discard duckdbAppenderDestroy(appender.appender.addr)
+
+proc isStateSuccessful(state: DuckDBState): bool =
+  result = state == DuckDBSuccess
+
+proc checkStateSuccessful(state: DuckDBState) =
+  if not isStateSuccessful(state):
+    raise newException(DuckDBOperationError, "DuckDB operation did not complete sucessfully.")
+
+proc checkStateSuccessful(state: DuckDBState, result: DuckDBResult) =
+  if not isStateSuccessful(state):
+    let errorMessage = result.result.unsafeAddr.duckdbResultError()
+    raise newException(DuckDBOperationError, "DuckDB operation did not complete sucessfully. Reason:\n" & $errorMessage)
+
+proc checkStateSuccessful(state: DuckDBState, statement: DuckDBPreparedStatement) =
+  if not isStateSuccessful(state):
+    let errorMessage = statement.statement.duckdbPrepareError()
+    raise newException(DuckDBOperationError, "DuckDB operation did not complete sucessfully. Reason:\n" & $errorMessage)
+
+proc checkStateSuccessful(state: DuckDBState, appender: DuckDBAppender) =
+  if not isStateSuccessful(state):
+    let errorMessage = appender.appender.duckdbAppenderError()
+    raise newException(DuckDBOperationError, "DuckDB operation did not complete sucessfully. Reason:\n" & $errorMessage)
+
+proc connect*(path: string): DuckDBConn =
   ## Opens a DuckDB database
   ## `path` is the path of the output DuckDB. Set to ":memory:" to open an in-memory database.
-  var duckDBState = duckdbOpen(path.cstring, result.addr)
-  checkStateSuccessful(duckDBState)
+  var state1 = duckdbOpen(path.cstring, result.database.addr)
+  checkStateSuccessful(state1)
+  var state2 = duckdbConnect(result.database, result.connection.addr)
+  checkStateSuccessful(state2)
 
-proc openDuckDB*(): DuckDBDatabase =
+proc connect*(): DuckDBConn =
   ## Opens an in-memory DuckDB database.
-  result = openDuckDB(":memory:")
+  result = connect(":memory:")
 
-proc connect*(duckDBDatabase: DuckDBDatabase): DuckDBConnection =
-  ## Creates a connection to a duckDB database.
-  var duckDBState = duckdbConnect(duckDBDatabase, result.addr)
-  checkStateSuccessful(duckDBState)
-
-proc executeWithoutArgs(duckDBConnection: DuckDBConnection, sqlQuery: string) =
+proc execWithoutArgs(conn: DuckDBConn, sqlQuery: string) =
   ## Executes a SQL query to a duckDB database.
-  var duckDBResult: DuckDBResult
-  cFree(duckDBResult):
-    var duckDBState = duckdbQuery(duckDBConnection, sqlQuery.cstring, duckDBResult.addr)
-    checkStateSuccessful(duckDBState, duckDBResult)
+  var result = DuckDBResult()
+  var state = duckdbQuery(conn.connection, sqlQuery.cstring, result.result.addr)
+  checkStateSuccessful(state, result)
 
-proc executeWithArgs(duckDBConnection: DuckDBConnection, sqlQuery: string, args: varargs[string, `$`]) =
+proc execWithArgs(conn: DuckDBConn, sqlQuery: string, args: varargs[string, `$`]) =
   ## Executes a SQL query to a duckDB database.
-  var duckDBState: DuckDBState
-  var duckDBPreparedStatement: DuckDBPreparedStatement
-  cFree(duckDBPreparedStatement):
-    
-    # Create prepared statement
-    duckDBState = duckdbPrepare(duckDBConnection, sqlQuery.cstring, duckDBPreparedStatement.addr)
-    checkStateSuccessful(duckDBState, duckDBPreparedStatement)
-    
-    # Parse prepared statement
-    for i, arg in args:
-      duckDBState = duckdbBindVarchar(duckDBPreparedStatement, (i + 1).idx_t, arg.cstring)
-      checkStateSuccessful(duckDBState)
+  var statement = DuckDBPreparedStatement()
+  
+  # Create prepared statement
+  let state1 = duckdbPrepare(conn.connection, sqlQuery.cstring, statement.statement.addr)
+  checkStateSuccessful(state1, statement)
 
-    # Result handler
-    var duckDBResult: DuckDBResult
-    cFree(duckDBResult):
+  # Parse prepared statement
+  for i, arg in args:
+    let state2 = duckdbBindVarchar(statement.statement, (i + 1).idx_t, arg.cstring)
+    checkStateSuccessful(state2)
 
-      duckDBState = duckdbExecutePrepared(duckDBPreparedStatement, duckDBResult.addr)
-      checkStateSuccessful(duckDBState, duckDBResult)
+  # Result handler
+  let result = DuckDBResult()
+  let state3 = duckdbExecutePrepared(statement.statement, result.result.unsafeAddr)
+  checkStateSuccessful(state3, result)
 
-proc execute*(duckDBConnection: DuckDBConnection, sqlQuery: string, args: varargs[string, `$`]) =
-  if args.len() == 0: duckDBConnection.executeWithoutArgs(sqlQuery)
-  else: duckDBConnection.executeWithArgs(sqlQuery, args)
+proc exec*(conn: DuckDBConn, sqlQuery: string, args: varargs[string, `$`]) =
+  if args.len() == 0: conn.execWithoutArgs(sqlQuery)
+  else: conn.execWithArgs(sqlQuery, args)
 
-iterator getRows(duckDBResult: var DuckDBResult): DuckDBRow =
-  var rowCount = duckDBResult.addr.duckdbRowCount()
-  var columnCount = duckDBResult.addr.duckdbColumnCount()
+iterator getRows(result: DuckDBResult): DuckDBRow =
+  var rowCount = result.result.unsafeAddr.duckdbRowCount()
+  var columnCount = result.result.unsafeAddr.duckdbColumnCount()
   var duckDBRow = newSeq[string](columnCount)
   for idxRow in 0..<rowCount:
     for idxCol in 0..<columnCount:
-      var valueVarchar = duckdbValueVarchar(duckDBResult.addr, idxCol, idxRow)
-      cFree(valueVarchar):
-        duckDBRow[idxCol] = (
-          if valueVarchar.isNil():
-            "NULL"
-          else:
-            $valueVarChar
-        )
+      var varchar = DuckDBValueVarchar(varchar: duckdbValueVarchar(result.result.unsafeAddr, idxCol, idxRow))
+      duckDBRow[idxCol] = (
+        if varchar.varchar.isNil():
+          "NULL"
+        else:
+          $varchar.varchar
+      )
     yield duckDBRow
 
-iterator fetchWithoutArgs(duckDBConnection: DuckDBConnection, sqlQuery: string): DuckDBRow =
+iterator rowsWithoutArgs(conn: DuckDBConn, sqlQuery: string): DuckDBRow =
   ## Executes a SELECT SQL query to a duckDB database.
-  var duckDBResult: DuckDBResult
-  cFree(duckDBResult):
-    var duckDBState = duckdbQuery(duckDBConnection, sqlQuery.cstring, duckDBResult.addr)
-    checkStateSuccessful(duckDBState, duckDBResult)
-    for duckDBRow in getRows(duckDBResult):
-      yield duckDBRow
 
-iterator fetchWithArgs(duckDBConnection: DuckDBConnection, sqlQuery: string, args: varargs[string, `$`]): DuckDBRow =
+  var result = DuckDBResult()
+  var state = duckdbQuery(conn.connection, sqlQuery.cstring, result.result.addr)
+  checkStateSuccessful(state, result)
+  for duckDBRow in getRows(result):
+    yield duckDBRow
+
+iterator rowsWithArgs(conn: DuckDBConn, sqlQuery: string, args: varargs[string, `$`]): DuckDBRow =
   ## Executes a prepared SELECT SQL query to a duckDB database.
-  var duckDBState: DuckDBState
-  var duckDBPreparedStatement: DuckDBPreparedStatement
-  cFree(duckDBPreparedStatement):
-    
-    # Create prepared statement
-    duckDBState = duckdbPrepare(duckDBConnection, sqlQuery.cstring, duckDBPreparedStatement.addr)
-    checkStateSuccessful(duckDBState, duckDBPreparedStatement)
-    
-    # Parse prepared statement
-    for i, arg in args:
-      duckDBState = duckdbBindVarchar(duckDBPreparedStatement, (i + 1).idx_t, arg.cstring)
-      checkStateSuccessful(duckDBState)
+  var statement = DuckDBPreparedStatement()
+  
+  # Create prepared statement
+  let state1 = duckdbPrepare(conn.connection, sqlQuery.cstring, statement.statement.addr)
+  checkStateSuccessful(state1, statement)
 
-    # Result handler
-    var duckDBResult: DuckDBResult
-    cFree(duckDBResult):
+  # Parse prepared statement
+  for i, arg in args:
+    let state2 = duckdbBindVarchar(statement.statement, (i + 1).idx_t, arg.cstring)
+    checkStateSuccessful(state2)
 
-      duckDBState = duckdbExecutePrepared(duckDBPreparedStatement, duckDBResult.addr)
-      checkStateSuccessful(duckDBState, duckDBResult)
+  # Result handler
+  let result = DuckDBResult()
+  let state3 = duckdbExecutePrepared(statement.statement, result.result.unsafeAddr)
+  checkStateSuccessful(state3, result)
+  for duckDBRow in getRows(result):
+    yield duckDBRow
 
-      for duckDBRow in getRows(duckDBResult):
-        yield duckDBRow
-
-iterator fetch*(duckDBConnection: DuckDBConnection, sqlQuery: string, args: varargs[string, `$`]): DuckDBRow =
+iterator rows*(conn: DuckDBConn, sqlQuery: string, args: varargs[string, `$`]): DuckDBRow =
   if args.len() == 0: 
-    for duckDBRow in fetchWithoutArgs(duckDBConnection, sqlQuery):
+    for duckDBRow in rowsWithoutArgs(conn, sqlQuery):
       yield duckDBRow
   else:
-    for duckDBRow in fetchWithArgs(duckDBConnection, sqlQuery, args):
+    for duckDBRow in rowsWithArgs(conn, sqlQuery, args):
       yield duckDBRow
 
-template cFreeAppender(duckDBAppender: DuckDBAppender, body: untyped) =
-  try: body
-  finally: discard duckdbAppenderDestroy(duckDBAppender.addr)
-
-proc fastInsert*(duckDBConnection: DuckDBConnection, table: string, ent: seq[DuckDBRow]) =
-  var duckDBState: DuckDBState 
-  var duckDBAppender: DuckDBAppender
-  cFreeAppender(duckDBAppender):
-    duckDBState = duckdbAppenderCreate(duckDBConnection, nil, table.cstring, duckDBAppender.addr)
-    checkStateSuccessful(duckDBState)
-    for row in ent:
-      for column in row:
-        if column == "NULL": duckDBState = duckdbAppendNull(duckdbAppender)
-        else: duckDBState = duckdbAppendVarchar(duckdbAppender, column.cstring)
-        checkStateSuccessful(duckDBState)
-      duckDBState = duckdbAppenderEndRow(duckDBAppender)
-      checkStateSuccessful(duckDBState)
+proc fastInsert*(conn: DuckDBConn, table: string, ent: seq[DuckDBRow]) =
+  var appender = DuckDBAppender()
+  let state1 = duckdbAppenderCreate(conn.connection, nil, table.cstring, appender.appender.addr)
+  checkStateSuccessful(state1, appender)
+  for row in ent:
+    for column in row:
+      let state2 = (
+        if column == "NULL": duckdbAppendNull(appender.appender)
+        else: duckdbAppendVarchar(appender.appender, column.cstring)
+      )
+      checkStateSuccessful(state2)
+    let state3 = duckdbAppenderEndRow(appender.appender)
+    checkStateSuccessful(state3)

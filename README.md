@@ -27,29 +27,24 @@ Opening/closing an in-memory database:
 import duckdb
 
 # Open database and connection
-var db = openDuckDB()
-var connection = db.connect()
-
-
-# Close connection and database
-connection.disconnect()
-db.close()  
+var dbConn = connect()
 ```
+Closing the database and the connection is done automatically though destructors
 
 Executing commands and fetching a prepared statement
 ```Nim
-connection.execute("CREATE TABLE integers(i INTEGER, j INTEGER);")
-connection.execute("INSERT INTO integers VALUES (3, 4), (5, 6), (7, NULL);")
+connection.exec("CREATE TABLE integers(i INTEGER, j INTEGER);")
+connection.exec("INSERT INTO integers VALUES (3, 4), (5, 6), (7, NULL);")
 var items: seq[seq[string]]
-for item in connection.fetch("SELECT * FROM integers WHERE i = ? or j = ?", 3, "6"):
+for item in connection.rows("SELECT * FROM integers WHERE i = ? or j = ?", 3, "6"):
   items.add(item)
 assert items == @[@["3", "4"], @["5", "6"]]
 ```
 
-Executing commands and inserting
+Executing commands and fast inserting. Fast inserting is much faster than inserting in a loop.
 ```Nim
-connection.execute("CREATE TABLE integers(i INTEGER, j INTEGER);")
-connection.execute("INSERT INTO integers VALUES (3, 4), (5, 6), (7, NULL);")
+connection.exec("CREATE TABLE integers(i INTEGER, j INTEGER);")
+connection.exec("INSERT INTO integers VALUES (3, 4), (5, 6), (7, NULL);")
 connection.fastInsert(
   "integers",
   @[
@@ -57,7 +52,7 @@ connection.fastInsert(
   ],
 )
 var items: seq[seq[string]]
-for item in connection.fetch(
+for item in connection.rows(
   """SELECT i, j, i + j
   FROM integers"""
   ): items.add(item)
