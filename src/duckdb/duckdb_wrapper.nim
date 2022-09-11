@@ -21,7 +21,7 @@ else:
 const baseDir = getProjectCacheDir("duckdb") & "/"
 
 static:
-  # cDebug()
+    # cDebug()
 
   const duckdbZip = lastPathPart(duckdbUrl)
   downloadUrl(duckdbUrl, baseDir)
