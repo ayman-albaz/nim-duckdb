@@ -61,7 +61,12 @@ iterator getRows(duckDBResult: var DuckDBResult): DuckDBRow =
     for idxCol in 0..<columnCount:
       var valueVarchar = duckdbValueVarchar(duckDBResult.addr, idxCol, idxRow)
       cFree(valueVarchar):
-        duckDBRow[idxCol] = $valueVarchar
+        duckDBRow[idxCol] = (
+          if valueVarchar.isNil():
+            "NULL"
+          else:
+            $valueVarChar
+        )
     yield duckDBRow
 
 iterator fetchWithoutArgs(duckDBConnection: DuckDBConnection, sqlQuery: string): DuckDBRow =
@@ -122,7 +127,7 @@ proc fastInsert*(duckDBConnection: DuckDBConnection, table: string, ent: seq[Duc
     checkStateSuccessful(duckDBState)
     for row in ent:
       for column in row:
-        if column == "": duckDBState = duckdbAppendNull(duckdbAppender)
+        if column == "NULL": duckDBState = duckdbAppendNull(duckdbAppender)
         else: duckDBState = duckdbAppendVarchar(duckdbAppender, column.cstring)
         checkStateSuccessful(duckDBState)
       duckDBState = duckdbAppenderEndRow(duckDBAppender)

@@ -15,7 +15,7 @@ suite "tests":
     connection.execute("INSERT INTO integers VALUES (3, 4), (5, 6), (7, NULL);")
     var items: seq[seq[string]]
     for item in connection.fetch("SELECT * FROM integers"): items.add(item)
-    check items == @[@["3", "4"], @["5", "6"], @["7", ""]]
+    check items == @[@["3", "4"], @["5", "6"], @["7", "NULL"]]
 
   test "DuckDB execute fetch prepared":
     var db = openDuckDB()
@@ -34,7 +34,7 @@ suite "tests":
     connection.fastInsert(
       "integers",
       @[
-        @["11", ""]
+        @["11", "NULL"]
       ],
 
     )
@@ -44,7 +44,7 @@ suite "tests":
       FROM integers"""
       ): items.add(item)
 
-    check items == @[@["3", "4", "7"], @["5", "6", "11"], @["7", "", ""], @["11", "", ""]]
+    check items == @[@["3", "4", "7"], @["5", "6", "11"], @["7", "NULL", "NULL"], @["11", "NULL", "NULL"]]
 
   teardown:
     connection.disconnect()

@@ -53,7 +53,7 @@ connection.execute("INSERT INTO integers VALUES (3, 4), (5, 6), (7, NULL);")
 connection.fastInsert(
   "integers",
   @[
-    @["11", ""]
+    @["11", "NULL"]
   ],
 )
 var items: seq[seq[string]]
@@ -62,10 +62,10 @@ for item in connection.fetch(
   FROM integers"""
   ): items.add(item)
 
-check items == @[@["3", "4", "7"], @["5", "6", "11"], @["7", "", ""], @["11", "", ""]]
+check items == @[@["3", "4", "7"], @["5", "6", "11"], @["7", "NULL", "NULL"], @["11", "NULL", "NULL"]]
 ```
 
-Null items are represented by `""`. I'm aware this is not always optimal, and PR's are always welcome.
+Null items are represented by `"NULL"`
 
 
 ## Acknowledgments
