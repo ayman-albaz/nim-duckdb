@@ -21,21 +21,6 @@ connection.disconnect()
 db.close()  
 ```
 
-Opening/closing a database with config:
-```Nim
-import duckdb
-
-# Open database and connection
-var duckDBConfig = DuckDBConfig(accessMode: "READ_WRITE", threads: "8", maxMemory: "8GB", defaultOrder: "DESC")
-var db = openDuckDB("test.duckdb", duckDBConfig)
-var connection = db.connect()
-
-
-# Close connection and database
-connection.disconnect()
-db.close()  
-
-```
 
 Opening/closing an in-memory database:
 ```Nim
