@@ -37,7 +37,7 @@ suite "tests":
       connection.execute("INSERT INTO integers VALUES (3, 4), (5, 6), (?, NULL);", "NANA")
 
   test "DuckDB execute fetch prepared":
-    var db = openDuckDB()
+    var db = openDuckDB("transient.db") # Is the error from this transient github issue?
     var connection = db.connect()
     connection.execute("CREATE TABLE integers(i INTEGER, j INTEGER);")
     connection.execute("INSERT INTO integers VALUES (3, 4), (5, 6), (7, NULL);")
