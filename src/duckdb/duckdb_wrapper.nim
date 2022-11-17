@@ -13,7 +13,7 @@ else:
     const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.1/libduckdb-osx-universal.zip"
     const duckdbLib = "libduckdb.dylib"
   when defined(Windows):
-    const duckdbLib = "libduckdb.d"
+    const duckdbLib = "libduckdb.dll"
     when defined(cpu64):
       const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.1/libduckdb-windows-amd64.zip"
     when defined(cpu32):

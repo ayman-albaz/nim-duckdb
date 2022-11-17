@@ -11,48 +11,42 @@ Opening/closing a database:
 ```Nim
 import duckdb
 
-# Open database and connection
-var db = openDuckDB("test.duckdb")
-var connection = db.connect()
-
-
-# Close connection and database
-connection.disconnect()
-db.close()  
+# Open database and connection.
+# Connection and database closed automatically with destructors
+var dbConn = connect("mydb.db")
 ```
-
 
 Opening/closing an in-memory database:
 ```Nim
 import duckdb
 
 # Open database and connection
+# Connection and database closed automatically with destructors
 var dbConn = connect()
 ```
-Closing the database and the connection is done automatically though destructors
 
 Executing commands and fetching a prepared statement
 ```Nim
-connection.exec("CREATE TABLE integers(i INTEGER, j INTEGER);")
-connection.exec("INSERT INTO integers VALUES (3, 4), (5, 6), (7, NULL);")
+dbConn.exec("CREATE TABLE integers(i INTEGER, j INTEGER);")
+dbConn.exec("INSERT INTO integers VALUES (3, 4), (5, 6), (7, NULL);")
 var items: seq[seq[string]]
-for item in connection.rows("SELECT * FROM integers WHERE i = ? or j = ?", 3, "6"):
+for item in dbConn.rows("SELECT * FROM integers WHERE i = ? or j = ?", 3, "6"):
   items.add(item)
 assert items == @[@["3", "4"], @["5", "6"]]
 ```
 
 Executing commands and fast inserting. Fast inserting is much faster than inserting in a loop.
 ```Nim
-connection.exec("CREATE TABLE integers(i INTEGER, j INTEGER);")
-connection.exec("INSERT INTO integers VALUES (3, 4), (5, 6), (7, NULL);")
-connection.fastInsert(
+dbConn.exec("CREATE TABLE integers(i INTEGER, j INTEGER);")
+dbConn.exec("INSERT INTO integers VALUES (3, 4), (5, 6), (7, NULL);")
+dbConn.fastInsert(
   "integers",
   @[
     @["11", "NULL"]
   ],
 )
 var items: seq[seq[string]]
-for item in connection.rows(
+for item in dbConn.rows(
   """SELECT i, j, i + j
   FROM integers"""
   ): items.add(item)
