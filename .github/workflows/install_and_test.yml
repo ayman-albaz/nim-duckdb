@@ -3,8 +3,17 @@ name: InstallAndTest
 on: [push]
 
 jobs:
-  tests:
+  tests-linux:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: jiro4989/setup-nim-action@v1
+        with:
+          nim-version: '1.6.6'
+      - run: nimble install -y
+      - run: nimble test -y
+  tests-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
       - uses: jiro4989/setup-nim-action@v1

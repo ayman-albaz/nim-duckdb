@@ -3,20 +3,20 @@ import nimterop/build
 import os
 
 when defined(buildDuckDb):
-  const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.0/libduckdb-src.zip"
+  const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.1/libduckdb-src.zip"
 
 else:
   when defined(Linux):
-    const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.0/libduckdb-linux-amd64.zip"
+    const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.1/libduckdb-linux-amd64.zip"
 
   when defined(macosx):
-    const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.0/libduckdb-osx-amd64.zip"
+    const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.1/libduckdb-osx-amd64.zip"
 
   when defined(Windows):
     when defined(cpu64):
-      const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.0/libduckdb-windows-amd64.zip"
+      const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.1/libduckdb-windows-amd64.zip"
     when defined(cpu32):
-      const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.0/libduckdb-windows-i386.zip"
+      const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.1/libduckdb-windows-i386.zip"
 
 const baseDir = getProjectCacheDir("duckdb") & "/"
 
