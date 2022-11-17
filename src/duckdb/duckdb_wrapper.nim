@@ -8,11 +8,12 @@ when defined(buildDuckDb):
 else:
   when defined(Linux):
     const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.1/libduckdb-linux-amd64.zip"
-
+    const duckdbLib = "libduckdb.so"
   when defined(macosx):
-    const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.1/libduckdb-osx-amd64.zip"
-
+    const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.1/libduckdb-osx-universal.zip"
+    const duckdbLib = "libduckdb.dylib"
   when defined(Windows):
+    const duckdbLib = "libduckdb.d"
     when defined(cpu64):
       const duckdbUrl = "https://github.com/duckdb/duckdb/releases/download/v0.5.1/libduckdb-windows-amd64.zip"
     when defined(cpu32):
@@ -53,5 +54,5 @@ when defined(buildDuckDb):
   cImport(duckDbH)
 
 else:
-  const duckDbLib = normalizedPath(baseDir & "libduckdb.so")
-  cImport(duckDbH, recurse = true, dynlib = duckDbLib)
+  const duckDbLibPath = normalizedPath(baseDir & duckdbLib)
+  cImport(duckDbH, recurse = true, dynlib = duckDbLibPath)
