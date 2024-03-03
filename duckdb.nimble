@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.3.1"
+version       = "0.4.0"
 author        = "ayman albaz"
 description   = "A DuckDB wrapper written in Nim."
 license       = "Apache-2.0"

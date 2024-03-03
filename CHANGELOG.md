@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## [0.4.0] - 2024-03-03
+### Added
+- Upgraded duckdb library from v0.5.0 to v0.10.0
 
 ## [0.3.1] - 2022-11-16
 ### Added
